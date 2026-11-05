@@ -1,0 +1,696 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>鱼塘里的秘密 · 一个公式的冒险</title>
+<style>
+  :root{
+    --blue:#3b82f6; --teal:#14b8a6; --green:#10b981; --amber:#f59e0b;
+    --purple:#8b5cf6; --rose:#f43f5e;
+    --fg:#1f2937; --muted:#64748b; --line:#e2e8f0; --soft:#eef2ff;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0;color:var(--fg);
+       font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif;
+       background:linear-gradient(160deg,#dbeafe 0%,#fef9c3 55%,#ffe4e6 100%);
+       background-attachment:fixed;padding:0 16px 110px}
+
+  /* ---- top header + progress dots ---- */
+  header.top{max-width:900px;margin:0 auto;padding:30px 0 6px;text-align:center}
+  header.top h1{font-size:28px;margin:0 0 4px;color:#1e3a8a}
+  header.top .sub{color:var(--muted);font-size:14.5px;margin:0}
+  .dots{display:flex;gap:10px;justify-content:center;margin:18px 0 4px;flex-wrap:wrap}
+  .dot{width:38px;height:38px;border-radius:50%;border:2px solid var(--line);background:#fff;
+       font-weight:800;color:var(--muted);cursor:pointer;font-size:15px;transition:.15s}
+  .dot:hover{border-color:var(--blue);color:var(--blue)}
+  .dot.done{background:#bfdbfe;border-color:var(--blue);color:#1d4ed8}
+  .dot.current{background:var(--blue);border-color:var(--blue);color:#fff;transform:scale(1.12)}
+  .step-label{font-size:13.5px;color:var(--muted);margin-top:6px}
+  .step-label b{color:#1d4ed8;font-size:16px}
+
+  /* ---- step cards ---- */
+  .wrap{max-width:900px;margin:0 auto}
+  .step-view{display:none;background:#fff;border-radius:26px;padding:26px 28px;
+    margin:18px 0;box-shadow:0 10px 34px rgba(30,58,138,.10);
+    border-top:7px solid var(--ac,#3b82f6)}
+  .step-view.on{display:block;animation:pop .25s ease}
+  @keyframes pop{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+  .step{display:inline-block;background:var(--ac,#3b82f6);color:#fff;font-weight:800;
+        font-size:13px;border-radius:999px;padding:5px 14px;margin-bottom:14px}
+  h2{font-size:22px;margin:0 0 12px;color:var(--ac,#1e3a8a)}
+  p{font-size:15.5px;line-height:1.9;margin:0 0 12px}
+  p.lead{color:var(--muted);font-size:14px;margin:0 0 14px}
+
+  .row{display:flex;flex-wrap:wrap;gap:20px;align-items:flex-start}
+  .ctrl{flex:1;min-width:230px}
+  .ctrl label{display:flex;justify-content:space-between;font-weight:700;font-size:14px;margin-bottom:8px}
+  .ctrl label b{color:var(--ac,#1d4ed8);font-variant-numeric:tabular-nums}
+  input[type=range]{width:100%;accent-color:var(--ac,#3b82f6)}
+  .presets{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0 2px}
+  .presets button{flex:1;min-width:96px;font-size:13.5px;font-weight:700;cursor:pointer;
+        padding:10px 10px;border-radius:12px;border:2px solid var(--line);background:#fff;color:var(--fg)}
+  .presets button:hover{border-color:var(--ac,#3b82f6);color:var(--ac,#3b82f6)}
+  .presets button.active{background:var(--ac,#3b82f6);border-color:var(--ac,#3b82f6);color:#fff}
+
+  .readout{display:flex;flex-wrap:wrap;gap:12px;margin-top:14px}
+  .stat{flex:1;min-width:130px;background:var(--soft);border-radius:14px;padding:12px 14px;text-align:center}
+  .stat .k{font-size:12px;color:var(--muted)}
+  .stat .v{font-size:19px;font-weight:800;color:var(--ac,#1d4ed8);font-variant-numeric:tabular-nums}
+
+  canvas{width:100%;height:auto;display:block;background:#fff;border-radius:14px;border:1px solid var(--line)}
+  .canvasstack{position:relative}
+  .canvasstack canvas{position:relative;display:block}
+  .canvasstack canvas.overlay{position:absolute;left:0;top:0;background:transparent;border:none;pointer-events:none}
+  #capacity{cursor:ew-resize;touch-action:none}
+
+  .hint{color:var(--muted);font-size:13.5px;margin-top:12px;line-height:1.8}
+  .capt{font-size:12.5px;color:var(--muted);text-align:center;margin-top:6px}
+  .pond-panel{margin-top:16px}
+  .pond{background:linear-gradient(180deg,#dbeafe 0%,#93c5fd 100%);border:2px solid #60a5fa;
+        border-radius:16px;min-height:120px;padding:12px;display:flex;flex-wrap:wrap;gap:6px;
+        align-content:flex-start;transition:background .3s}
+  .pond .fish{font-size:24px;line-height:1;filter:drop-shadow(0 1px 1px rgba(0,0,0,.15));
+              display:inline-block;animation:swim 2.4s ease-in-out infinite}
+  @keyframes swim{
+    0%,100%{transform:translateY(0) rotate(-5deg)}
+    50%{transform:translateY(-5px) rotate(5deg)}
+  }
+  .pond-capt{font-size:13.5px;color:var(--muted);margin-top:8px}
+  code{background:var(--soft);color:#1d4ed8;padding:1px 6px;border-radius:6px;font-size:14px}
+
+  details{border:1px solid var(--line);border-radius:14px;padding:10px 14px;margin-bottom:10px;background:#f8fafc}
+  summary{cursor:pointer;font-weight:700;font-size:15px}
+  details p{color:var(--fg);font-size:14px;margin:8px 0 0;line-height:1.8}
+
+  .formula{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:20px;text-align:center;
+           background:var(--soft);color:#1d4ed8;padding:14px;border-radius:14px;margin:10px 0}
+  .terms{display:flex;flex-wrap:wrap;gap:10px;margin-top:8px}
+  .term{flex:1;min-width:150px;background:var(--soft);border-radius:14px;padding:10px 12px;font-size:13.5px;line-height:1.6}
+  .term b{display:block;font-size:15px;color:var(--ac,#1d4ed8);margin-bottom:2px}
+
+  /* ---- quiz ---- */
+  .q{background:#f8fafc;border:1px solid var(--line);border-radius:14px;padding:14px 16px;margin:12px 0}
+  .q .qt{font-weight:700;font-size:14.5px;margin-bottom:10px}
+  .q .opts{display:flex;flex-wrap:wrap;gap:8px}
+  .q .opts button{font-size:13.5px;font-weight:700;cursor:pointer;padding:9px 14px;
+        border-radius:10px;border:2px solid var(--line);background:#fff;color:var(--fg);text-align:left}
+  .q .opts button:hover{border-color:var(--ac,#3b82f6)}
+  .q .opts button.correct{background:#dcfce7;border-color:var(--green);color:#065f46}
+  .q .opts button.wrong{background:#fee2e2;border-color:var(--rose);color:#9f1239}
+  .q .fb{display:none;margin-top:10px;font-size:13.5px;padding:10px 12px;border-radius:10px;line-height:1.7}
+  .q .fb.good{background:#dcfce7;color:#065f46}
+  .q .fb.bad{background:#fee2e2;color:#9f1239}
+
+  .callout{background:#fef9c3;border:1px solid var(--amber);border-radius:14px;
+           padding:12px 14px;font-size:14.5px;margin-top:12px;line-height:1.7}
+  .live-tag{font-size:14px;font-weight:800;padding:6px 12px;border-radius:10px;display:inline-block}
+  .tag-safe{background:#dcfce7;color:#065f46}
+  .tag-risk{background:#fee2e2;color:#9f1239}
+
+  .teacher{margin:18px 0}
+  .teacher summary{color:var(--muted)}
+
+  /* ---- bottom nav (prev / next) ---- */
+  footer.navfoot{position:fixed;left:0;right:0;bottom:0;background:rgba(255,255,255,.96);
+    backdrop-filter:blur(6px);border-top:1px solid var(--line);
+    padding:12px 20px;display:flex;align-items:center;justify-content:center;gap:18px;z-index:60}
+  .btn{border:none;border-radius:16px;padding:13px 26px;font-size:16px;font-weight:800;cursor:pointer}
+  .btn-prev{background:#fff;color:var(--muted);border:2px solid var(--line)}
+  .btn-prev:disabled{opacity:.35;cursor:not-allowed}
+  .btn-next{background:var(--blue);color:#fff;box-shadow:0 4px 0 #1d4ed8}
+  .btn-next:active{transform:translateY(2px);box-shadow:0 2px 0 #1d4ed8}
+  .pg{font-size:14px;color:var(--muted);font-weight:700;min-width:52px;text-align:center}
+  .pg b{color:#1d4ed8;font-size:18px}
+
+  @media (max-width:560px){
+    header.top h1{font-size:24px}
+    .btn{padding:11px 18px;font-size:15px}
+  }
+</style>
+</head>
+<body>
+
+<header class="top">
+  <h1>🐟 鱼塘里的秘密</h1>
+  <p class="sub">一个公式的冒险 · 不用背，动手玩就懂</p>
+  <div class="dots" id="dots">
+    <button class="dot" data-dot="1">1</button>
+    <button class="dot" data-dot="2">2</button>
+    <button class="dot" data-dot="3">3</button>
+    <button class="dot" data-dot="4">4</button>
+    <button class="dot" data-dot="5">5</button>
+    <button class="dot" data-dot="6">6</button>
+  </div>
+  <div class="step-label">第 <b id="curStep">1</b> / 6 步</div>
+</header>
+
+<div class="wrap">
+
+  <!-- ① 你的鱼塘 -->
+  <div class="step-view on" style="--ac:#3b82f6" data-step="1">
+    <span class="step">① 你的鱼塘</span>
+    <h2>今天我们要玩的这个模型，是一个关于「永续经营」的探究实验</h2>
+    <p>思考一下：一个鱼塘，<b>每年的可持续最大捕捞量是多少？</b></p>
+    <div class="callout">👉 待会儿大家在操作时，每遇到一个<b>可以点击或拖动的控件</b>，先停下来猜猜看结果会怎么变。不用担心选错——把模型当作你的<b>实验桌</b>，用你的操作把背后的规律「玩」出来！</div>
+  </div>
+
+  <!-- ② 一个数 -->
+  <div class="step-view" style="--ac:#14b8a6" data-step="2">
+    <span class="step">② 一个数</span>
+    <h2>把一塘鱼，变成一个数</h2>
+    <p>要研究这个鱼塘，如果我们去数每条鱼多大、游在哪儿、是公是母，那可太复杂了。科学家建立模型的第一步，就是抓住核心——把整个池塘简化为一个数：鱼占池塘的拥挤程度 <code>P</code>（<code>0</code> 代表空池塘，<code>1</code> 代表全装满了）。</p>
+    <div class="terms">
+      <div class="term"><b>① 生长的力量</b>鱼生小鱼，取决于繁殖速度 <code>r</code> 和现有的基数，也就是 <code>r · 这一代</code>。生得越快、基数越大，数量就越疯长。</div>
+      <div class="term"><b>② 环境的阻力</b>池塘装不下那么多，越满越生不动，所以还要乘上「剩余空间」<code>(1 − 这一代)</code>。空间有限，越接近装满，阻力就越大。</div>
+    </div>
+    <div class="formula">下一代 = r · 这一代 · (1 − 这一代)</div>
+    <p>生态系统能不能稳定，就看「油门」和「刹车」怎么配合。这就是数学建模最厉害的地方——<b>抓大放小</b>。我们不用关心某条具体的鱼，只要盯紧<b>「总量」这一个数</b>，就能用这套简短的规则预测未来。</p>
+  </div>
+
+  <!-- ③ 动手 -->
+  <div class="step-view" style="--ac:#10b981" data-step="3">
+    <span class="step">③ 动手</span>
+    <h2>轮到你拧旋钮了</h2>
+    <p>理论推导完了，现在把「控制权」交给你们。大家面前有几个预设按钮和一条滑块，咱们可以来观察鱼塘的命运。</p>
+
+    <div class="ctrl">
+      <label>增长率 r <b id="rVal">2.50</b></label>
+      <input type="range" id="r" min="0.80" max="3.00" step="0.01" value="2.50">
+      <div class="presets">
+        <button data-r="0.80">r = 0.8<br><small>消失</small></button>
+        <button data-r="1.50">r = 1.5<br><small>稳定·稀</small></button>
+        <button data-r="2.50">r = 2.5<br><small>稳定·适中</small></button>
+        <button data-r="2.90">r = 2.9<br><small>稳定·快满</small></button>
+      </div>
+    </div>
+
+    <div class="readout">
+      <div class="stat"><div class="k">现在是什么情况</div><div class="v" id="behavior">稳定（到达承载力）</div></div>
+      <div class="stat"><div class="k">最后停在</div><div class="v" id="stable">0.600</div></div>
+      <div class="stat"><div class="k">画了多少代</div><div class="v">80</div></div>
+    </div>
+
+    <div class="pond-panel">
+      <div class="pond" id="pond"></div>
+      <div class="pond-capt" id="pondCapt"></div>
+    </div>
+
+    <div class="row" style="margin-top:16px">
+      <div style="flex:1;min-width:270px">
+        <canvas id="chart" width="820" height="360"></canvas>
+        <div class="capt">左 —— <b>时间序列</b>：一代一代发生了什么。</div>
+      </div>
+      <div style="flex:1;min-width:270px">
+        <details>
+          <summary>🔍 进阶：蛛网图看「为什么」（看不懂可跳过）</summary>
+          <canvas id="cobweb" width="820" height="360"></canvas>
+          <div class="capt">橙色线怎么走，鱼群就怎么变。</div>
+          <p style="font-size:13.5px;color:var(--muted);line-height:1.8;margin:10px 0 0">每一代都是<b>一竖一横</b>：求「下一代」＝竖直走到蓝曲线；把「下一代」变成这一代＝水平走到灰斜线，所以拼出「回字形」。<b>回字越绕越小</b>＝鱼群稳稳地落进「承载力」那个点。</p>
+        </details>
+      </div>
+    </div>
+
+    <p class="hint"><b>1. 先点 r = 2.5</b>：注意看折线图，线是不是慢慢变成了一条水平线？这说明鱼群<b>稳定在「承载力」</b>上。<br><b>2. 再试试 r = 1.5</b>：也稳定，但停在<b>更低</b>的位置——说明 r 决定了塘里最终能养多少鱼。<br><b>3. 试试 r = 0.8</b>：鱼群一路掉到 0——生得太慢，鱼群<b>消失了</b>。</p>
+    <details style="margin-top:14px">
+      <summary>💡 为什么鱼群会「稳定」在承载力？（看得懂更好）</summary>
+      <p style="font-size:13.5px;color:var(--muted);line-height:1.8;margin:8px 0 0">鱼一多，剩余空间 <code>(1−P)</code> 就变小，增长变慢；鱼一少，空间又变大，增长变快。这一来一回，鱼群就「软着陆」停在一个<b>不多不少</b>的位置：<code>P* = 1 − 1/r</code>。这个位置就是<b>承载力</b>——塘里能长期养活的鱼。<br><br>所以 <code>r</code> 越大，最终养的鱼越多：r=2 时停在 50%，r=2.9 时停在约 66%。</p>
+    </details>
+  </div>
+
+  <!-- ④ 全图 -->
+  <div class="step-view" style="--ac:#f59e0b" data-step="4">
+    <span class="step">④ 全图</span>
+    <h2>r 越大，塘里最终能养多少鱼？</h2>
+    <p>一个个 r 慢慢试太慢了。不如一次全画出来——这张图告诉你：<b>不同的 r，鱼群最终会稳定在多少鱼</b>。</p>
+
+    <div class="canvasstack">
+      <canvas id="capacity" width="820" height="300"></canvas>
+      <canvas id="capacityOverlay" class="overlay" width="820" height="300"></canvas>
+    </div>
+    <p class="hint"><b>1. 横轴是增长率 r，纵轴是稳定后的鱼量 P*。</b><br><b>2. 红竖线就是你现在的 r</b>——点一下或左右拖动红竖线，看它对应多少鱼。<br>从左往右看：r 越大，最终养的鱼越多（r=2 → 50%，r=2.9 → 约 66%）。</p>
+  </div>
+
+  <!-- ⑤ 考你 -->
+  <div class="step-view" style="--ac:#8b5cf6" data-step="5">
+    <span class="step">⑤ 考你</span>
+    <h2>先猜，再点答案</h2>
+    <p class="lead">别急着看答案。先自己猜一个，再点选项看对不对。点击就会显示解析，下面也有参考答案。</p>
+
+    <div class="q">
+      <div class="qt">1. 为什么鱼不会无限涨到 1 以上？</div>
+      <div class="opts">
+        <button data-correct="0">因为 r 小于 1</button>
+        <button data-correct="1">因为塘满了，鱼就生不动了</button>
+      </div>
+      <div class="fb" data-fb="good">✅ 对 —— <code>(1−P)</code> 就是「还剩多少空间」：P 越接近 1，空间越小，增长越慢，直到停在承载力。</div>
+      <div class="fb" data-fb="bad">❌ 真正拦住 P 的是 <code>(1−P)</code> —— 那就是「塘装不下」这件事，也就是承载力。</div>
+    </div>
+
+    <div class="q">
+      <div class="qt">2. r = 2.5 时，很多代之后鱼群会怎样？</div>
+      <div class="opts">
+        <button data-correct="0">一直涨，直到爆满</button>
+        <button data-correct="1">稳定在一个固定值（承载力）</button>
+        <button data-correct="0">衰减到 0</button>
+      </div>
+      <div class="fb" data-fb="good">✅ 对 —— 鱼群<b>稳定在承载力</b> P* = 1 − 1/2.5 = 0.6（塘满 60%），不再变化。</div>
+      <div class="fb" data-fb="bad">❌ 再想想 —— r=2.5 时鱼先涨，但塘的空间越来越小，最后稳稳停在 60% 左右，既不爆满也不消失。</div>
+    </div>
+
+    <div class="q">
+      <div class="qt">3. 每年卖鱼卖太多，会怎样？</div>
+      <div class="opts">
+        <button data-correct="0">没什么影响</button>
+        <button data-correct="1">鱼群一路掉到 0，鱼塘卖空</button>
+      </div>
+      <div class="fb" data-fb="good">✅ 对 —— 卖得比鱼群能补的还多，鱼就越来越少，最后<b>崩塘</b>。</div>
+      <div class="fb" data-fb="bad">❌ 卖太多 = 每一代都「入不敷出」，鱼群会一路掉到 0。</div>
+    </div>
+
+    <details style="margin-top:12px">
+      <summary>参考答案（先自己预测再看）</summary>
+      <p>1️⃣ 鱼不超 1 → <b>塘满了生不动</b>（承载力）。<br>2️⃣ r=2.5 → <b>稳定在 60%</b>（承载力 P*=1−1/r）。<br>3️⃣ 卖太多 → <b>鱼群崩到 0</b>。</p>
+    </details>
+  </div>
+
+  <!-- ⑥ 算条数 -->
+  <div class="step-view" style="--ac:#f43f5e" data-step="6">
+    <span class="step">⑥ 算条数</span>
+    <h2>回到开头：到底能卖几条？</h2>
+    <p>拖下面两个滑块。你会发现：只要<b>每年卖的量不超过鱼群的增长量</b>，鱼群就能稳住、年年有鱼卖。</p>
+
+    <div class="ctrl">
+      <label>增长率 r <b id="rVal2">2.80</b></label>
+      <input type="range" id="r2" min="1.20" max="2.90" step="0.01" value="2.80">
+    </div>
+    <div class="ctrl" style="margin-top:14px">
+      <label>每年卖的比例 H <b id="hVal">0.10</b></label>
+      <input type="range" id="h" min="0.00" max="0.40" step="0.01" value="0.10">
+    </div>
+
+    <div class="readout">
+      <div class="stat"><div class="k">最多能卖</div><div class="v" id="hMaxVal">289 条/年</div></div>
+      <div class="stat"><div class="k">你现在卖</div><div class="v" id="curFishVal">100 条/年</div></div>
+    </div>
+    <div style="margin-top:12px">
+      <span class="live-tag" id="harvestTag">✓ 安全 —— 每年卖 100 条没问题</span>
+    </div>
+
+    <div style="margin-top:16px">
+      <canvas id="harvest" width="820" height="300"></canvas>
+      <div class="capt">卖了鱼之后，鱼群会怎样：<b>绿色</b>＝稳住，年年有鱼卖；<b>红色</b>＝一路掉到 0，鱼塘卖空。</div>
+    </div>
+
+    <p class="hint" id="harvestDetail">最多能卖 ≈ 289 条/年，你现在卖 100 条，安全且有余量。</p>
+
+    <div class="callout">🎯 <b>答案出来了：</b>最大可持续捕捞量 <code>H_max = (r−1)² / (4r)</code>，而且<b>永远超不过鱼塘总容量的 1/3</b>。以 r = 2.8、塘里 1000 条为例：<b>每年最多可持续卖 ≈ 289 条</b>。再多一点，鱼群就一路掉到 0。</div>
+  </div>
+
+  <!-- 给老师的话 -->
+  <details class="teacher">
+    <summary>🧑‍🏫 给老师 / 评委的话（学生看不到也不影响）</summary>
+    <p>这一段把活动对应到计算思维：把一塘鱼简化成一个数 P = <b>抽象</b>；一条迭代规则反复运行 = <b>算法</b>；调 r 看鱼群最终稳定在多少 = <b>建模</b>；先预测再验证、并判断「可持续捕捞」范围 = <b>评估</b>。教学主线是「不插电数鱼 → Scratch 迭代 → Python」三种表示（见 Lecture 9）。常见误区：以为「r 越高鱼越多」（实际受承载力限制）、混淆 r（速度）和 P（饱满度）。配套教师笔记见 <code>INT6064 小组项目-教师笔记-Logistic.docx</code>。</p>
+  </details>
+
+</div>
+
+<footer class="navfoot">
+  <button class="btn btn-prev" id="prevBtn" disabled>← 上一步</button>
+  <div class="pg">第 <b id="pgNow">1</b> / 6 步</div>
+  <button class="btn btn-next" id="nextBtn">下一步 →</button>
+</footer>
+
+<script>
+const rSlider = document.getElementById('r');
+const rVal = document.getElementById('rVal');
+const behavior = document.getElementById('behavior');
+const stable = document.getElementById('stable');
+const chart = document.getElementById('chart');
+const cobweb = document.getElementById('cobweb');
+const ctx = chart.getContext('2d');
+const W = chart.width, H = chart.height;
+
+const R0 = 0.8, R1 = 3.0;
+
+function logistic(r, P0, gens){
+  const P = [P0];
+  for(let t=0; t<gens; t++) P.push(r*P[t]*(1-P[t]));
+  return P;
+}
+
+// 判断长期行为：r<1 消失；1≤r≤3 稳定在承载力
+function classify(r){
+  if(r < 1) return {type:'die-out'};
+  return {type:'stable', fixed: 1 - 1/r};
+}
+
+function behaviorLabel(cls){
+  if(cls.type==='die-out') return '消失（生得太慢）';
+  return '稳定（到达承载力）';
+}
+
+// ---- 鱼塘可视化 ----
+const MAX_FISH = 20;
+const pond = document.getElementById('pond');
+const pondCapt = document.getElementById('pondCapt');
+let pondTimer = null;
+
+let lastFishN = -1;
+function renderPond(P){
+  const n = Math.round(P * MAX_FISH);
+  if(n !== lastFishN){
+    lastFishN = n;
+    let s = '';
+    for(let i=0;i<n;i++) s += '<span class="fish" style="animation-delay:' + ((i%6)*0.18).toFixed(2) + 's">🐟</span>';
+    pond.innerHTML = s;
+  }
+  pondCapt.textContent = '塘里现在有 ' + n + ' 条鱼（占塘的 ' + Math.round(P*100) + '%）';
+}
+
+function animatePond(r){
+  const P = logistic(r, 0.1, 60);
+  if(pondTimer) clearInterval(pondTimer);
+  let i = 0;
+  renderPond(P[0]);
+  pondTimer = setInterval(() => {
+    i += 3;
+    if(i >= P.length){ i = P.length-1; clearInterval(pondTimer); }
+    renderPond(P[i]);
+  }, 45);
+}
+
+// ---- time series ----
+function drawTime(){
+  const r = parseFloat(rSlider.value);
+  const P = logistic(r, 0.1, 80);
+  const cls = classify(r);
+
+  rVal.textContent = r.toFixed(2);
+  behavior.textContent = behaviorLabel(cls);
+  stable.textContent = cls.type==='stable' ? (1 - 1/r).toFixed(3) : '0';
+
+  ctx.clearRect(0,0,W,H);
+
+  ctx.strokeStyle='#e5e7eb'; ctx.lineWidth=1;
+  for(let i=0;i<=4;i++){
+    const y = H-40 - (H-70)*(i/4);
+    ctx.beginPath(); ctx.moveTo(40,y); ctx.lineTo(W-20,y); ctx.stroke();
+    ctx.fillStyle='#9ca3af'; ctx.font='12px sans-serif'; ctx.textAlign='right';
+    ctx.fillText((i/4).toFixed(2), 34, y+4);
+  }
+
+  ctx.strokeStyle='#2563eb'; ctx.lineWidth=2.5; ctx.beginPath();
+  P.forEach((v,t)=>{
+    const x = 40 + (W-60)*(t/(P.length-1));
+    const y = H-40 - (H-70)*v;
+    t===0 ? ctx.moveTo(x,y) : ctx.lineTo(x,y);
+  });
+  ctx.stroke();
+
+  const yAt = v => H-40 - (H-70)*v;
+  if(cls.type==='stable'){
+    dashedLine(cls.fixed, '#059669', '承载力 P* = ' + cls.fixed.toFixed(3));
+  } else {
+    ctx.fillStyle='#dc2626'; ctx.font='13px sans-serif'; ctx.textAlign='left';
+    ctx.fillText('⟵ 生得太慢，鱼群消失', 46, 24);
+  }
+
+  ctx.fillStyle='#6b7280'; ctx.textAlign='center'; ctx.font='12px sans-serif';
+  ctx.fillText('世代', W/2, H-8);
+  ctx.save(); ctx.translate(12, H/2); ctx.rotate(-Math.PI/2);
+  ctx.fillText('P（鱼占满塘的比例）', 0, 0); ctx.restore();
+
+  function dashedLine(v, color, label){
+    const y = yAt(v);
+    ctx.strokeStyle=color; ctx.lineWidth=1.5; ctx.setLineDash([5,4]);
+    ctx.beginPath(); ctx.moveTo(40,y); ctx.lineTo(W-20,y); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle=color; ctx.font='12.5px sans-serif'; ctx.textAlign='left';
+    ctx.fillText(label, 46, y-5);
+  }
+}
+
+// ---- cobweb ----
+function drawCobweb(){
+  const r = parseFloat(rSlider.value);
+  const c = cobweb.getContext('2d');
+  const CW = cobweb.width, CH = cobweb.height;
+  c.clearRect(0,0,CW,CH);
+  const pad = 34;
+  const pw = CW - pad*2, ph = CH - pad*2;
+  const X = v => pad + v*pw;
+  const Y = v => pad + ph - v*ph;
+
+  c.strokeStyle='#9ca3af'; c.lineWidth=1.2; c.setLineDash([5,4]);
+  c.beginPath(); c.moveTo(X(0),Y(0)); c.lineTo(X(1),Y(1)); c.stroke();
+  c.setLineDash([]);
+
+  c.strokeStyle='#2563eb'; c.lineWidth=2.2; c.beginPath();
+  for(let i=0;i<=240;i++){ const x=i/240; const y=r*x*(1-x); i? c.lineTo(X(x),Y(y)) : c.moveTo(X(x),Y(y)); }
+  c.stroke();
+
+  let x = 0.1;
+  c.strokeStyle='#d97706'; c.lineWidth=2; c.beginPath(); c.moveTo(X(x), Y(0));
+  for(let i=0;i<42;i++){
+    const y = r*x*(1-x);
+    c.lineTo(X(x), Y(y));
+    c.lineTo(X(y), Y(y));
+    x = y;
+  }
+  c.stroke();
+
+  c.fillStyle='#d97706'; c.beginPath(); c.arc(X(0.1),Y(0),4,0,7); c.fill();
+
+  c.fillStyle='#6b7280'; c.font='12px sans-serif'; c.textAlign='center';
+  c.fillText('P（当前）', CW/2, CH-6);
+  c.save(); c.translate(14, CH/2); c.rotate(-Math.PI/2);
+  c.fillText('P（下一）', 0, 0); c.restore();
+}
+
+// ---- 承载力曲线（P* = 1 − 1/r）----
+const capCanvas = document.getElementById('capacity');
+const capOverlay = document.getElementById('capacityOverlay');
+const CW2 = capCanvas.width, CH2 = capCanvas.height;
+
+function drawCapacity(){
+  const cc = capCanvas.getContext('2d');
+  cc.clearRect(0,0,CW2,CH2);
+  const rMin = 1.0, rMax = 3.0;
+  const xFor = r => 40 + (CW2-60)*((r-rMin)/(rMax-rMin));
+  const yFor = p => CH2-40 - (CH2-70)*p;
+
+  // 网格
+  cc.strokeStyle='#e5e7eb'; cc.lineWidth=1;
+  for(let i=0;i<=4;i++){
+    const y = CH2-40 - (CH2-70)*(i/4);
+    cc.beginPath(); cc.moveTo(40,y); cc.lineTo(CW2-20,y); cc.stroke();
+    cc.fillStyle='#9ca3af'; cc.font='12px sans-serif'; cc.textAlign='right';
+    cc.fillText((i/4).toFixed(2), 34, y+4);
+  }
+
+  // 承载力曲线
+  cc.strokeStyle='#2563eb'; cc.lineWidth=2.5; cc.beginPath();
+  for(let i=0;i<=240;i++){
+    const r = rMin + (rMax-rMin)*i/240;
+    const p = 1 - 1/r;
+    const x = xFor(r), y = yFor(p);
+    i===0 ? cc.moveTo(x,y) : cc.lineTo(x,y);
+  }
+  cc.stroke();
+
+  cc.fillStyle='#6b7280'; cc.font='12px sans-serif'; cc.textAlign='center';
+  cc.fillText('r（增长率）', CW2/2, CH2-8);
+  cc.save(); cc.translate(14, CH2/2); cc.rotate(-Math.PI/2);
+  cc.fillText('P*（稳定后的鱼量）', 0, 0); cc.restore();
+}
+
+function drawCapacityMarker(){
+  const r = parseFloat(rSlider.value);
+  if(r < 1) return;
+  const mc = capOverlay.getContext('2d');
+  mc.clearRect(0,0,CW2,CH2);
+  const rMin = 1.0, rMax = 3.0;
+  const x = 40 + (CW2-60)*((r-rMin)/(rMax-rMin));
+  const p = 1 - 1/r;
+  const y = CH2-40 - (CH2-70)*p;
+  mc.strokeStyle='#dc2626'; mc.lineWidth=2;
+  mc.beginPath(); mc.moveTo(x,10); mc.lineTo(x,CH2-40); mc.stroke();
+  mc.fillStyle='#dc2626'; mc.font='12px sans-serif'; mc.textAlign='center';
+  mc.fillText('r = '+r.toFixed(2), x, 22);
+  mc.beginPath(); mc.arc(x,y,5,0,7); mc.fill();
+}
+
+// ---- harvest section ----
+const r2 = document.getElementById('r2');
+const hSlider = document.getElementById('h');
+const hVal = document.getElementById('hVal');
+const rVal2 = document.getElementById('rVal2');
+const harvestTag = document.getElementById('harvestTag');
+const harvestDetail = document.getElementById('harvestDetail');
+const hMaxVal = document.getElementById('hMaxVal');
+const curFishVal = document.getElementById('curFishVal');
+const harvestCanvas = document.getElementById('harvest');
+const K = 1000;
+
+function hMax(r){ return (r-1)*(r-1)/(4*r); }
+
+function harvestSim(r, H, P0, gens){
+  const P = [P0];
+  for(let t=0; t<gens; t++){
+    let n = r*P[t]*(1-P[t]) - H;
+    if(n < 0) n = 0;
+    P.push(n);
+  }
+  return P;
+}
+
+function drawHarvest(r, H, ok){
+  const c = harvestCanvas.getContext('2d');
+  const HW = harvestCanvas.width, HH = harvestCanvas.height;
+  c.clearRect(0,0,HW,HH);
+  const P = harvestSim(r, H, 0.5, 80);
+
+  c.strokeStyle='#e5e7eb'; c.lineWidth=1;
+  for(let i=0;i<=4;i++){
+    const y = HH-40 - (HH-70)*(i/4);
+    c.beginPath(); c.moveTo(40,y); c.lineTo(HW-20,y); c.stroke();
+    c.fillStyle='#9ca3af'; c.font='12px sans-serif'; c.textAlign='right';
+    c.fillText((i/4).toFixed(2), 34, y+4);
+  }
+
+  c.strokeStyle = ok ? '#059669' : '#dc2626';
+  c.lineWidth = 2.5; c.beginPath();
+  P.forEach((v,t)=>{
+    const x = 40 + (HW-60)*(t/(P.length-1));
+    const y = HH-40 - (HH-70)*v;
+    t===0 ? c.moveTo(x,y) : c.lineTo(x,y);
+  });
+  c.stroke();
+
+  c.fillStyle='#6b7280'; c.textAlign='center'; c.font='12px sans-serif';
+  c.fillText('世代', HW/2, HH-8);
+  c.save(); c.translate(12, HH/2); c.rotate(-Math.PI/2);
+  c.fillText('P（鱼占满塘的比例）', 0, 0); c.restore();
+
+  c.fillStyle = ok ? '#059669' : '#dc2626';
+  c.font='12.5px sans-serif'; c.textAlign='left';
+  c.fillText(ok ? '⟵ 稳住，年年有鱼卖' : '⟵ 一路掉到 0，鱼塘卖空', 46, 24);
+}
+
+function updateHarvest(){
+  const r = parseFloat(r2.value);
+  const H = parseFloat(hSlider.value);
+  rVal2.textContent = r.toFixed(2);
+  hVal.textContent = H.toFixed(2);
+
+  const hm = hMax(r);
+  const hmFish = Math.round(hm*K);
+  const curFish = Math.round(H*K);
+  hMaxVal.textContent = hmFish + ' 条/年';
+  curFishVal.textContent = curFish + ' 条/年';
+
+  let ok = false;
+  if(H < hm){
+    ok = true;
+    harvestTag.className = 'live-tag tag-safe';
+    harvestTag.textContent = '✓ 安全 —— 每年卖 ' + curFish + ' 条没问题';
+    harvestDetail.textContent = '最多能卖 ' + hmFish + ' 条/年；你现在卖 ' + curFish + ' 条，还有余量。';
+  } else {
+    harvestTag.className = 'live-tag tag-risk';
+    harvestTag.textContent = '⚠ 卖太多 —— 超过 ' + hmFish + ' 条/年，鱼塘会卖空';
+    harvestDetail.textContent = '你现在卖 ' + curFish + ' 条 > 上限 ' + hmFish + ' 条，鱼群会一路掉到 0。';
+  }
+  drawHarvest(r, H, ok);
+}
+
+// ---- quiz ----
+document.querySelectorAll('.q').forEach(q => {
+  q.querySelectorAll('.opts button').forEach(btn => {
+    btn.addEventListener('click', () => {
+      if(btn.dataset.done) return;
+      q.querySelectorAll('.opts button').forEach(b => b.dataset.done = '1');
+      const good = btn.dataset.correct === '1';
+      btn.classList.add(good ? 'correct' : 'wrong');
+      const fb = q.querySelector(good ? '.fb.good' : '.fb.bad');
+      fb.style.display = 'block';
+    });
+  });
+});
+
+// ---- wiring ----
+function updateAll(){
+  drawTime();
+  drawCobweb();
+  drawCapacityMarker();
+  animatePond(parseFloat(rSlider.value));
+  document.querySelectorAll('.presets button').forEach(b =>
+    b.classList.toggle('active', Math.abs(parseFloat(b.dataset.r) - parseFloat(rSlider.value)) < 0.005));
+}
+
+document.querySelectorAll('.presets button').forEach(btn => {
+  btn.addEventListener('click', () => { rSlider.value = btn.dataset.r; updateAll(); });
+});
+rSlider.addEventListener('input', updateAll);
+
+// ---- 在承载力曲线上拖动红竖线 ----
+const rFromX = x => Math.max(1.0, Math.min(3.0, 1.0 + (3.0-1.0)*((x-40)/(CW2-60))));
+let capDrag = false;
+capCanvas.addEventListener('pointerdown', e => {
+  capDrag = true;
+  try{ capCanvas.setPointerCapture(e.pointerId); }catch(_){}
+  const rect = capCanvas.getBoundingClientRect();
+  const x = (e.clientX - rect.left) * (capCanvas.width / rect.width);
+  rSlider.value = rFromX(x).toFixed(2);
+  updateAll();
+});
+capCanvas.addEventListener('pointermove', e => {
+  if(!capDrag) return;
+  const rect = capCanvas.getBoundingClientRect();
+  const x = (e.clientX - rect.left) * (capCanvas.width / rect.width);
+  rSlider.value = rFromX(x).toFixed(2);
+  updateAll();
+});
+capCanvas.addEventListener('pointerup', () => { capDrag = false; });
+capCanvas.addEventListener('pointercancel', () => { capDrag = false; });
+
+r2.addEventListener('input', updateHarvest);
+hSlider.addEventListener('input', updateHarvest);
+
+// ---- step navigation ----
+const views = [...document.querySelectorAll('.step-view')];
+const dots = [...document.querySelectorAll('.dot')];
+const prevBtn = document.getElementById('prevBtn');
+const nextBtn = document.getElementById('nextBtn');
+const curStep = document.getElementById('curStep');
+const pgNow = document.getElementById('pgNow');
+const total = views.length;
+let step = 1;
+
+function showStep(n){
+  step = Math.max(1, Math.min(total, n));
+  views.forEach((v,i) => v.classList.toggle('on', i+1 === step));
+  curStep.textContent = step;
+  pgNow.textContent = step;
+  prevBtn.disabled = step === 1;
+  nextBtn.innerHTML = step === total ? '完成 🎉' : '下一步 →';
+  dots.forEach((d,i) => {
+    d.classList.toggle('current', i+1 === step);
+    d.classList.toggle('done', i+1 < step);
+  });
+  window.scrollTo({top:0, behavior:'smooth'});
+}
+
+prevBtn.addEventListener('click', () => showStep(step-1));
+nextBtn.addEventListener('click', () => { if(step < total) showStep(step+1); });
+dots.forEach(d => d.addEventListener('click', () => showStep(+d.dataset.dot)));
+
+// initial draw
+drawCapacity();
+updateAll();
+updateHarvest();
+showStep(1);
+</script>
+</body>
+</html>
